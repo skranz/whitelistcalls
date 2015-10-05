@@ -1,0 +1,15 @@
+Package: whitelistcalls
+Type: Package
+Title: Checking R code against a whitelist or a blacklist
+Version: 0.1
+Date: 2015-10-95
+Authors@R: person("Sebastian", "Kranz", email = "sebastian.kranz@uni-ulm.de", role = c("aut", "cre"))
+Description: Checking R code against a whitelist or a blacklist.
+             Can improve security of shinyapps like RTutor
+             that allow users to run own R code. Only allow function calls
+             and variable access that is whitelisted and not blacklisted.
+License: GPL >= 2.0
+LazyData: TRUE
+Depends: yaml, codeUtils, stringi
+Remote:
+  skranz/codeUtils
