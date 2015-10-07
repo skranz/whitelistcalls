@@ -18,4 +18,5 @@ as a yaml vector
   cat.pkg.funs("stats")
   cat.pkg.funs("base")
   cat.pkg.funs("dplyr")
+  cat.pkg.funs("ggplot2")
 }}

@@ -36,6 +36,50 @@ call.list.to.call = function(li) {
 
 }
 
+examples.find.calls = function() {
+  call = quote({
+    print(abs(-2*5*log(abs(-1))))
+  })
+  find.calls(call, fun.names="abs")
+  call = parse(text='
+    lapply(-5:10,abs)
+
+    lapply(-5:10,abs)
+    print(abs(-2*5*log(abs(-1))))
+  ')
+  find.calls(call, fun.names=c("abs","sum"))
+}
+
+#' Returns a list of calls of the functions listed in fun.names
+#' or variables access
+find.calls = function(call, fun.names=NULL, var.names=NULL, fun.as.var=TRUE, return.parent.for.var=TRUE, parent=NULL) {
+  if (is.expression(call)) call = as.list(call)
+  if (is.list(call)) {
+    return(unlist(lapply(call,find.calls,fun.names=fun.names, var.names=var.names, fun.as.var=fun.as.var)))
+  }
+
+
+  if (length(call)==1) {
+    var = as.character(call)
+    if (return.parent.for.var) call = parent
+
+    if (var %in% var.names) return(list(call))
+    if (fun.as.var & var %in% fun.names) return(list(call))
+    return(NULL)
+  }
+
+  fun.name = as.character(call[1])
+
+  if (fun.name %in% fun.names) {
+    res = list(call)
+  } else {
+    res = NULL
+  }
+  sub.li = unlist(lapply(call[-1], function(e1) {
+    find.calls(e1, fun.names=fun.names, var.names=var.names, fun.as.var=fun.as.var, parent=call)
+  }))
+  c(res, sub.li)
+}
 
 #' Find function calls inside a call object but ignore subcalls listed in ignore.calls
 #'

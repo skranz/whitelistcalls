@@ -145,40 +145,57 @@ check.whitelist = function(call, wl.funs=NULL,wl.vars=NULL, wl.calls=NULL, bl.fu
   return(list(ok=ok, fb.funs = fb.funs, fb.vars=fb.vars, msg=msg))
 }
 
-#' Only evaluate expr if it passes check.whitelist
-#'
-#' if the expression is not cleared by check.whitelist throw an error
-#' @param expr an R call object that shall be evaluated
-#' @param envir the environment in which expr shall be evaluated
-#' @param enclos see help for `eval`
-#' @param wl.funs a character vector of the function names that are allowed (whitelisted). If NULL ignored.
-#' @param wl.vars a character vector of the variable names that are allowed (whitelisted). If NULL ignored.
-#' @param wl.calls a list of explicit calls that are allowed.
-#' For example, one may not generally whitelist the function 'library'
-#' (who knows what can happen if a library has functions with the
-#' same name than some whitelisted function but different behavior)
-#' Yet one may allow the explicit call
-#' `library(dplyr)`. In this case, we could set
-#'  wl.calls = alist(library(dplyr)).
-#'  DOES NOT YET WORK!
-#' @param bl.funs a character vector of the function names that are forbidden (blacklisted). If NULL ignored.
-#' @param bl.vars a character vector of the variable names that are forbidden  (blacklisted). If NULL ignored.
-#' @return the evaluated expr if it passes check.whitelist, otherwise an error.
-whitelist.eval = function(expr,
-  envir = parent.frame(),
-  enclos = if (is.list(envir) || is.pairlist(envir)) parent.frame() else baseenv(),
-  wl.funs=NULL,wl.vars=NULL, wl.calls=NULL, bl.funs=NULL, bl.vars=NULL) {
-
-  res = check.whitelist(expr, wl.funs=wl.funs,wl.vars=wl.vars, wl.calls=wl.calls, bl.funs=bl.funs, bl.vars=bl.vars)
-
-  if (!res$ok) {
-    stop(res$msg)
-  }
-  eval(expr,envir,enclos)
-}
 
 
 #' A synoym for check.whitelist with different order of the arguments
 check.blacklist = function(call, bl.funs=NULL,bl.vars=NULL, wl.funs=NULL, wl.vars=NULL, wl.calls=NULL) {
   check.whitelist(call=call, bl.funs=bl.funs, bl.vars=bl.vars, wl.funs=wl.funs, wl.vars=wl.var, wl.calls=wl.calls)
+}
+
+examples.find.forbidden.calls = function() {
+  call = quote({
+    print(abs(-2*5*log(abs(-1))))
+  })
+  find.forbidden.calls(call, bl.funs=c("abs"), wl.calls = alist(abs=abs(-1)))
+
+}
+
+
+#' Returns a list of forbidden calls
+#'
+#' Returns a list of all subcalls of call that are forbidden given the provided
+#' whitelists and blacklists. Usually, it suffices to simply call check.whitelist.
+#' This function is slower, put may be helpful if the exact sources of the violations
+#' want to be known.
+#'
+#' @param call the call object
+#' @param wl.funs a character vector of the function names that are allowed (whitelisted). If NULL ignored.
+#' @param wl.vars a character vector of the variable names that are allowed (whitelisted). If NULL ignored.
+#' @param wl.calls a named list of quoted calls that are allowed.
+#' The list names should be the call names, i.e. call[[1]].
+#' For example, one may not generally whitelist the function 'library'
+#' (who knows what can happen if a library has functions with the
+#' same name than some whitelisted function but different behavior)
+#' Yet one may allow the explicit call
+#' `library(dplyr)`. In this case, we could set
+#'  wl.calls = alist(library=library(dplyr)).
+#' @param bl.funs a character vector of the function names that are forbidden (blacklisted). If NULL ignored.
+#' @param bl.vars a character vector of the variable names that are forbidden  (blacklisted). If NULL ignored.
+#' @param check.white.list.res optional the returned object of a call to check.white.list. Can speed up find.forbidden.calls
+#' @export
+
+find.forbidden.calls = function(call, wl.funs=NULL, wl.vars=NULL, wl.calls=NULL,bl.funs=NULL,bl.vars=NULL, check.white.list.res=NULL) {
+
+  # First find forbidden function names or variables in call
+  if (is.null(check.white.list.res)) {
+    res=check.whitelist(call, wl.funs=wl.funs, wl.vars=wl.vars, wl.calls = NULL, bl.funs=bl.funs, bl.vars=bl.vars)
+  } else {
+    res=check.whitelist.res
+  }
+
+  if (res$ok) return(NULL)
+
+  calls = find.calls(call,fun.names = res$fb.funs,var.names = res$fb.vars)
+  fb.calls = setdiff(calls, wl.calls)
+  fb.calls
 }
