@@ -48,7 +48,7 @@ funs.call.graph = function(fun.name, env=new.env()) {
   list(g=g, li = funs.li)
 }
 
-find.fun.funs = function(fun, lib = NULL, penv = parent.env(.GlobalEnv)) {
+find.fun.funs = function(fun, lib = NULL, penv = parent.env(.GlobalEnv), truncate.pkg=FALSE) {
   #restore.point("find.fun.funs")
 
   if (is.character(fun)) {
@@ -63,6 +63,7 @@ find.fun.funs = function(fun, lib = NULL, penv = parent.env(.GlobalEnv)) {
   li = c(formals(fun), list(body(fun)))
   res = robust.find.funs(li)
   if (is.null(res)) res = character(0)
+  if (truncate.pkg) res = stringtools::str.right.of(res,"::")
   res
 }
 

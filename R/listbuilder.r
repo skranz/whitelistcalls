@@ -1,19 +1,26 @@
 find.fun.pkg.from.pkg = function(fun.name, pkg, pkg.env = asNamespace(pkg)) {
   library(stringtools)
-  if (has.substring(fun.name,"::")) {
-    if (has.substring(fun.name,":::")) {
+  if (has.substr(fun.name,"::")) {
+    if (has.substr(fun.name,":::")) {
       return(c(
-        fun.name=str.left.of(fun.name,":::"),
+        fun.name=str.right.of(fun.name,":::"),
         pkg=str.right.of(fun.name,":::")
       ))
     }
     return(c(
-      fun.name=str.left.of(fun.name,"::"),
-      pkg=str.right.of(fun.name,"::")
+      fun.name=str.right.of(fun.name,"::"),
+      pkg=str.left.of(fun.name,"::")
     ))
   }
 
-  where.env = pryr::where(fun.name, pkg.env)
+  where.env = try(pryr::where(fun.name, pkg.env), silent=TRUE)
+  if (is(where.env,"try-error")) {
+    return(c(
+      fun.name=fun.name,
+      pkg="?"
+    ))
+  }
+
   #where.env[[fun]]
   where.name = environmentName(where.env)
   c(fun.name=fun.name,pkg=where.name)
@@ -22,6 +29,7 @@ find.fun.pkg.from.pkg = function(fun.name, pkg, pkg.env = asNamespace(pkg)) {
 
 collect.pkg.calls = function(pkg) {
   pkg = "base"
+  library(pkg,character.only = TRUE)
 
   pkg.env = asNamespace(pkg)
   ls(pkg.env,all.names = TRUE)
@@ -29,17 +37,57 @@ collect.pkg.calls = function(pkg) {
 
   fun.li = lapply(funs,find.fun.funs, penv=pkg.env)
 
+
+
   all.funs = unique(c(funs,unlist(fun.li)))
+  ext.funs = setdiff(all.funs,funs )
 
-  fp.li = lapply(funs, function(fun) {
-    list(fun.name=fun, pkg=pkg)
+  # Exported function calls from the package
+  int.li = lapply(funs, function(fun) {
+    c(fun.name=fun, pkg=pkg)
   })
-  names(fp.li) = paste0(fun.)
 
+  # External or not exported function calls
+  pkg.env = asNamespace(pkg)
+  ext.li = lapply(ext.funs, function(fun) {
+    find.fun.pkg.from.pkg(fun,pkg = pkg, pkg.env=pkg.env)
+  })
+
+  fp.li = c(int.li, ext.li)
+  names(fp.li) = c(funs, ext.funs)
+
+
+  long.names = sapply(fp.li, function(el) {
+    if (el$pkg == "?") return(el$fun.name)
+    paste0(el$pkg,":::",el$fun.name)
+  })
+  names(fp.li) = long.names
+  fp.li
+}
+
+pkg.risks = function(pkg,wl=NULL,risk.funs=NULL) {
+  pkg = "base"
+  setwd("D:/libraries/whitelistcalls/whitelistcalls/lists/risklists")
+  risk.funs = unlist(yaml.load_file("risklist.yaml"))
+
+  funs = get.pkg.funs(pkg)
+  fun.li = lapply(funs,find.fun.funs, penv=pkg.env)
+  names(fun.li) = funs
+
+  risks = lapply(fun.li, function(sub.funs) {
+    intersect(sub.funs, risk.funs)
+  })
+  risks = risks[!sapply(risks,function(el) length(el)==0)]
+
+  risk.names = setdiff(names(risks), risk.funs)
+
+  yaml = wbl.to.yaml(risk.names, pkg)
+  writeClipboard(yaml)
+  cat(yaml)
 }
 
 examples.listbuilder = function() {
-  dir = setwd("D:/libraries/WhitelistEval/WhitelistEval/lists/pkglists")
+  dir = setwd("D:/libraries/whitelistcalls/whitelistcalls/lists/pkglists")
 
   fun = "readLines"
 
@@ -62,8 +110,14 @@ examples.listbuilder = function() {
 
   gl = setdiff(funs,c(bl,wl))
 
+  #wl.yaml = wbl.to.yaml(wl, "base")
+  #writeLines(wl.yaml, wl.file)
+
   #bl.yaml = wbl.to.yaml(bl, "base")
   #writeLines(bl.yaml, bl.file)
+
+  #gl.yaml = wbl.to.yaml(gl, "base")
+  #writeLines(wl.yaml, wl.file)
 
   res = funs.call.graph(funs)
   g = res$g; funs.li = res$li
@@ -128,6 +182,7 @@ examples.cat.pkg.funs = function() {
   cat.pkg.funs("stats")
   cat.pkg.funs("base")
   cat.pkg.funs("dplyr")
+  cat.pkg.funs("ggplot2")
 }
 
 
@@ -155,8 +210,11 @@ get.pkg.funs = function(pkg="base") {
 #' as a yaml vector
 #' @param pkg the name of the package
 cat.pkg.funs = function(pkg="base") {
+  library(pkg,character.only = TRUE)
   funs = ls(paste0("package:",pkg))
-  cat.funs(funs)
+  txt = wbl.to.yaml(funs, pkg)
+  writeClipboard(txt)
+  cat(txt)
 }
 
 cat.funs = function(funs) {

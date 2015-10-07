@@ -1,0 +1,13 @@
+base: 
+    level1: [match.fun, eval, parse]
+    level2: [
+        'apply', 'autoload',
+        'autoloader', 'bquote', 'by.data.frame', 'by.default',
+        'char.expand', 'dget', 'eapply', 'eval.parent', 'evalq',
+        'Find', 'invokeRestartInteractively', 'lapply', 'local', 'Map',
+        'mapply', 'match.arg',  'Negate', 'Ops.data.frame',
+        'outer', 'parseNamespaceFile', 'Reduce', 'sapply', 'source',
+        'subset.data.frame', 'subset.matrix', 'sweep', 'sys.source', 'tapply',
+        'transform.data.frame', 'vapply', 'with.default', 'within.data.frame',
+        'within.list']
+
